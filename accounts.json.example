@@ -1,0 +1,47 @@
+{
+  "accounts": [
+    {
+      "id": "account_1",
+      "email": "SEU_EMAIL_1@gmail.com",
+      "password": "SUA_SENHA_1",
+      "status": "active",
+      "last_used": null,
+      "challenge_count": 0,
+      "blocked_until": null,
+      "max_requests_per_hour": 100,
+      "requests_count": 0,
+      "requests_reset_time": null
+    },
+    {
+      "id": "account_2",
+      "email": "SEU_EMAIL_2@gmail.com", 
+      "password": "SUA_SENHA_2",
+      "status": "active",
+      "last_used": null,
+      "challenge_count": 0,
+      "blocked_until": null,
+      "max_requests_per_hour": 100,
+      "requests_count": 0,
+      "requests_reset_time": null
+    },
+    {
+      "id": "account_3",
+      "email": "SEU_EMAIL_3@gmail.com",
+      "password": "SUA_SENHA_3", 
+      "status": "active",
+      "last_used": null,
+      "challenge_count": 0,
+      "blocked_until": null,
+      "max_requests_per_hour": 100,
+      "requests_count": 0,
+      "requests_reset_time": null
+    }
+  ],
+  "settings": {
+    "rotation_strategy": "round_robin",
+    "challenge_cooldown_minutes": 60,
+    "max_challenge_retries": 3,
+    "request_delay_seconds": 2,
+    "retry_attempts": 3
+  }
+}
