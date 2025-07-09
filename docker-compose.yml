@@ -6,10 +6,8 @@ services:
     container_name: linkedin-scraper-api
     ports:
       - "8080:8080"
-    environment:
-      - FLASK_ENV=production
-      - LINKEDIN_EMAIL=${LINKEDIN_EMAIL}
-      - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD}
+    volumes:
+      - ./accounts.json:/app/accounts.json
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
@@ -17,24 +15,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Optional: Add nginx reverse proxy
-  nginx:
-    image: nginx:alpine
-    container_name: linkedin-scraper-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - linkedin-scraper
-    restart: unless-stopped
-    profiles:
-      - production

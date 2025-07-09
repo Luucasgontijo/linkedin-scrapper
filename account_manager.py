@@ -1,6 +1,6 @@
 """
 LinkedIn Account Manager
-Gerencia múltiplas contas do LinkedIn com rotação automática e detecção de challenges
+Manages multiple LinkedIn accounts with automatic rotation and challenge detection
 """
 
 import json
@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from linkedin_api import Linkedin
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -22,27 +21,27 @@ class LinkedInAccountManager:
         self.current_account = None
         
     def load_accounts(self) -> dict:
-        """Carrega a configuração das contas do arquivo JSON"""
+        """Load accounts configuration from JSON file"""
         try:
             with open(self.accounts_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
-            logger.error(f"Arquivo {self.accounts_file} não encontrado")
+            logger.error(f"File {self.accounts_file} not found")
             return {"accounts": [], "settings": {}}
         except json.JSONDecodeError as e:
-            logger.error(f"Erro ao decodificar JSON: {e}")
+            logger.error(f"Error decoding JSON: {e}")
             return {"accounts": [], "settings": {}}
     
     def save_accounts(self):
-        """Salva a configuração das contas no arquivo JSON"""
+        """Save accounts configuration to JSON file"""
         try:
             with open(self.accounts_file, 'w', encoding='utf-8') as f:
                 json.dump(self.accounts_data, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            logger.error(f"Erro ao salvar contas: {e}")
+            logger.error(f"Error saving accounts: {e}")
     
     def get_available_accounts(self) -> List[dict]:
-        """Retorna lista de contas disponíveis (não bloqueadas)"""
+        """Get list of available accounts (not blocked)"""
         available = []
         current_time = datetime.now()
         
@@ -50,17 +49,17 @@ class LinkedInAccountManager:
             if account["status"] != "active":
                 continue
                 
-            # Verifica se a conta está bloqueada temporariamente
+            # Check if account is temporarily blocked
             if account.get("blocked_until"):
                 blocked_until = datetime.fromisoformat(account["blocked_until"])
                 if current_time < blocked_until:
                     continue
                 else:
-                    # Remove o bloqueio se o tempo passou
+                    # Remove block if time has passed
                     account["blocked_until"] = None
                     account["challenge_count"] = 0
             
-            # Verifica limite de requests por hora
+            # Check hourly request limit
             if account.get("requests_reset_time"):
                 reset_time = datetime.fromisoformat(account["requests_reset_time"])
                 if current_time > reset_time:
@@ -74,35 +73,29 @@ class LinkedInAccountManager:
         return available
     
     def get_next_account(self) -> Optional[dict]:
-        """Retorna a próxima conta disponível baseada na estratégia de rotação"""
+        """Get next available account based on rotation strategy"""
         available_accounts = self.get_available_accounts()
         
         if not available_accounts:
-            logger.warning("Nenhuma conta disponível")
+            logger.warning("No accounts available")
             return None
         
         strategy = self.accounts_data.get("settings", {}).get("rotation_strategy", "round_robin")
         
         if strategy == "round_robin":
-            # Rotação circular
             if self.current_account_index >= len(available_accounts):
                 self.current_account_index = 0
             account = available_accounts[self.current_account_index]
             self.current_account_index = (self.current_account_index + 1) % len(available_accounts)
-            
         elif strategy == "least_used":
-            # Usar a conta menos utilizada
-            account = min(available_accounts, 
-                         key=lambda x: x.get("requests_count", 0))
-        
+            account = min(available_accounts, key=lambda x: x.get("requests_count", 0))
         else:
-            # Padrão: primeira disponível
             account = available_accounts[0]
         
         return account
     
     def mark_challenge(self, account_id: str):
-        """Marca uma conta como tendo enfrentado um challenge"""
+        """Mark an account as having faced a challenge"""
         for account in self.accounts_data["accounts"]:
             if account["id"] == account_id:
                 account["challenge_count"] = account.get("challenge_count", 0) + 1
@@ -110,22 +103,20 @@ class LinkedInAccountManager:
                 max_retries = self.accounts_data.get("settings", {}).get("max_challenge_retries", 3)
                 
                 if account["challenge_count"] >= max_retries:
-                    # Bloquear conta temporariamente
                     blocked_until = datetime.now() + timedelta(minutes=cooldown_minutes)
                     account["blocked_until"] = blocked_until.isoformat()
                     account["status"] = "blocked"
-                    logger.warning(f"Conta {account_id} bloqueada até {blocked_until}")
+                    logger.warning(f"Account {account_id} blocked until {blocked_until}")
                 
                 self.save_accounts()
                 break
     
     def mark_request(self, account_id: str):
-        """Marca uma requisição feita pela conta"""
+        """Mark a request made by the account"""
         for account in self.accounts_data["accounts"]:
             if account["id"] == account_id:
                 current_time = datetime.now()
                 
-                # Inicializar contador se necessário
                 if not account.get("requests_reset_time"):
                     account["requests_reset_time"] = (current_time + timedelta(hours=1)).isoformat()
                     account["requests_count"] = 0
@@ -137,58 +128,50 @@ class LinkedInAccountManager:
                 break
     
     def initialize_api(self, max_retries: int = 3) -> bool:
-        """Inicializa a API do LinkedIn com rotação de contas"""
+        """Initialize LinkedIn API with account rotation"""
         retry_count = 0
         
         while retry_count < max_retries:
             account = self.get_next_account()
             
             if not account:
-                logger.error("Nenhuma conta disponível para autenticação")
+                logger.error("No accounts available for authentication")
                 return False
             
             try:
-                logger.info(f"Tentando autenticar com conta: {account['id']}")
+                logger.info(f"Trying to authenticate with account: {account['id']}")
                 
-                # Criar nova instância da API
                 self.linkedin_api = Linkedin(account["email"], account["password"])
                 self.current_account = account
                 
-                # Marcar uso da conta
                 self.mark_request(account["id"])
                 
-                logger.info(f"Autenticação bem-sucedida com conta: {account['id']}")
+                logger.info(f"Authentication successful with account: {account['id']}")
                 return True
                 
             except Exception as e:
                 error_message = str(e).lower()
                 
-                # Detectar challenges comuns
+                # Detect common challenges
                 if any(keyword in error_message for keyword in [
                     "challenge", "captcha", "verification", "suspicious", 
                     "unusual activity", "security check", "verify"
                 ]):
-                    logger.warning(f"Challenge detectado na conta {account['id']}: {e}")
+                    logger.warning(f"Challenge detected for account {account['id']}: {e}")
                     self.mark_challenge(account["id"])
                 else:
-                    logger.error(f"Erro de autenticação na conta {account['id']}: {e}")
+                    logger.error(f"Authentication error for account {account['id']}: {e}")
                 
                 retry_count += 1
                 
-                # Delay entre tentativas
                 delay = self.accounts_data.get("settings", {}).get("request_delay_seconds", 2)
                 time.sleep(delay)
         
-        logger.error("Falha na autenticação após todas as tentativas")
+        logger.error("Authentication failed after all attempts")
         return False
     
-    def rotate_account(self) -> bool:
-        """Força a rotação para a próxima conta"""
-        logger.info("Forçando rotação de conta...")
-        return self.initialize_api()
-    
     def execute_with_retry(self, func, *args, **kwargs):
-        """Executa uma função com retry automático e rotação de contas"""
+        """Execute a function with automatic retry and account rotation"""
         max_retries = self.accounts_data.get("settings", {}).get("retry_attempts", 3)
         retry_count = 0
         
@@ -196,13 +179,11 @@ class LinkedInAccountManager:
             try:
                 if not self.linkedin_api:
                     if not self.initialize_api():
-                        raise Exception("Falha na inicialização da API")
+                        raise Exception("Failed to initialize API")
                 
-                # Marcar requisição
                 if self.current_account:
                     self.mark_request(self.current_account["id"])
                 
-                # Executar função
                 result = func(*args, **kwargs)
                 return result
                 
@@ -210,9 +191,9 @@ class LinkedInAccountManager:
                 error_message = str(e).lower()
                 retry_count += 1
                 
-                logger.warning(f"Erro na execução (tentativa {retry_count}): {e}")
+                logger.warning(f"Execution error (attempt {retry_count}): {e}")
                 
-                # Detectar challenges ou problemas que requerem rotação
+                # Detect challenges or problems requiring rotation
                 if any(keyword in error_message for keyword in [
                     "challenge", "captcha", "verification", "suspicious",
                     "unusual activity", "security check", "verify",
@@ -221,27 +202,25 @@ class LinkedInAccountManager:
                     if self.current_account:
                         self.mark_challenge(self.current_account["id"])
                     
-                    # Tentar próxima conta
                     if retry_count < max_retries:
-                        logger.info("Tentando próxima conta...")
-                        if not self.rotate_account():
+                        logger.info("Trying next account...")
+                        if not self.initialize_api():
                             break
                 else:
-                    # Erro não relacionado a challenge, aguardar antes de tentar novamente
                     delay = self.accounts_data.get("settings", {}).get("request_delay_seconds", 2)
                     time.sleep(delay)
         
-        raise Exception(f"Falha após {max_retries} tentativas")
+        raise Exception(f"Failed after {max_retries} attempts")
     
     def get_api(self):
-        """Retorna a instância atual da API do LinkedIn"""
+        """Get current LinkedIn API instance"""
         if not self.linkedin_api:
             if not self.initialize_api():
                 return None
         return self.linkedin_api
     
     def get_account_status(self) -> dict:
-        """Retorna status de todas as contas"""
+        """Get status of all accounts"""
         status = {
             "total_accounts": len(self.accounts_data["accounts"]),
             "active_accounts": 0,
@@ -264,7 +243,6 @@ class LinkedInAccountManager:
                 "is_available": False
             }
             
-            # Verificar se está disponível
             if account["status"] == "active":
                 is_blocked = False
                 if account.get("blocked_until"):

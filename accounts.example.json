@@ -1,0 +1,23 @@
+{
+  "accounts": [
+    {
+      "id": "account_1",
+      "email": "",
+      "password": "",
+      "status": "active",
+      "last_used": "2025-07-09T14:33:02.076451",
+      "challenge_count": 1,
+      "blocked_until": null,
+      "max_requests_per_hour": 100,
+      "requests_count": 5,
+      "requests_reset_time": "2025-07-09T15:29:17.281148"
+    }
+  ],
+  "settings": {
+    "rotation_strategy": "round_robin",
+    "challenge_cooldown_minutes": 60,
+    "max_challenge_retries": 3,
+    "request_delay_seconds": 2,
+    "retry_attempts": 3
+  }
+}
