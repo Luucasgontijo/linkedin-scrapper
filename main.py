@@ -34,6 +34,33 @@ def extract_linkedin_id(url):
     
     return None, None
 
+def convert_urn_to_url(urn):
+    """Convert LinkedIn URN to URL"""
+    if not urn:
+        return None
+    
+    # Remove urn:li: prefix if present
+    if urn.startswith('urn:li:'):
+        urn = urn[7:]
+    
+    # Extract entity type and ID
+    if ':' in urn:
+        entity_type, entity_id = urn.split(':', 1)
+        
+        # Map entity types to URL patterns
+        url_patterns = {
+            'person': f'https://www.linkedin.com/in/{entity_id}/',
+            'company': f'https://www.linkedin.com/company/{entity_id}/',
+            'school': f'https://www.linkedin.com/school/{entity_id}/',
+            'fs_profile': f'https://www.linkedin.com/in/{entity_id}/',
+            'fs_company': f'https://www.linkedin.com/company/{entity_id}/',
+            'fs_school': f'https://www.linkedin.com/school/{entity_id}/'
+        }
+        
+        return url_patterns.get(entity_type)
+    
+    return None
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -182,6 +209,64 @@ def scrape_school():
         if account_manager.current_account:
             account_manager.mark_challenge(account_manager.current_account["id"])
         
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/convert/urn-to-url', methods=['POST'])
+def urn_to_url():
+    """Convert LinkedIn URN to URL"""
+    try:
+        data = request.get_json()
+        if not data or 'urn' not in data:
+            return jsonify({"error": "URN is required"}), 400
+        
+        urn = data['urn']
+        url = convert_urn_to_url(urn)
+        
+        if not url:
+            return jsonify({"error": "Invalid URN format"}), 400
+        
+        return jsonify({
+            "success": True,
+            "urn": urn,
+            "url": url
+        })
+        
+    except Exception as e:
+        logger.error(f"Error converting URN to URL: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/convert/url-to-urn', methods=['POST'])
+def url_to_urn():
+    """Convert LinkedIn URL to URN"""
+    try:
+        data = request.get_json()
+        if not data or 'url' not in data:
+            return jsonify({"error": "URL is required"}), 400
+        
+        url = data['url']
+        url_type, linkedin_id = extract_linkedin_id(url)
+        
+        if not url_type or not linkedin_id:
+            return jsonify({"error": "Invalid LinkedIn URL"}), 400
+        
+        # Map URL types to URN formats
+        urn_patterns = {
+            'profile': f'urn:li:person:{linkedin_id}',
+            'company': f'urn:li:company:{linkedin_id}',
+            'school': f'urn:li:school:{linkedin_id}'
+        }
+        
+        urn = urn_patterns.get(url_type)
+        
+        return jsonify({
+            "success": True,
+            "url": url,
+            "urn": urn,
+            "type": url_type
+        })
+        
+    except Exception as e:
+        logger.error(f"Error converting URL to URN: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

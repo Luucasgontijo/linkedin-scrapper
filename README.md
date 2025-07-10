@@ -37,29 +37,34 @@ A robust REST API for scraping LinkedIn profiles, companies, and schools with in
 ### Option 1: Local Development
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd linkedin-scrapper
 ```
 
 2. **Create and activate virtual environment**
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
 3. **Install dependencies**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 4. **Configure accounts**
+
 ```bash
 # Edit accounts.json with your LinkedIn credentials
 nano accounts.json
 ```
 
 5. **Run the API**
+
 ```bash
 python main.py
 ```
@@ -67,6 +72,7 @@ python main.py
 ### Option 2: Docker Deployment
 
 1. **Build and run with Docker Compose**
+
 ```bash
 docker-compose up --build
 ```
@@ -106,11 +112,13 @@ The API will be available at `http://localhost:8080`
 ## 📡 API Endpoints
 
 ### Health Check
+
 ```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -119,11 +127,13 @@ GET /health
 ```
 
 ### Account Status
+
 ```http
 GET /accounts/status
 ```
 
 **Response:**
+
 ```json
 {
   "total_accounts": 1,
@@ -140,6 +150,7 @@ GET /accounts/status
 ```
 
 ### Profile Scraping
+
 ```http
 POST /scrape/profile
 Content-Type: application/json
@@ -150,6 +161,7 @@ Content-Type: application/json
 ```
 
 ### Company Scraping
+
 ```http
 POST /scrape/company
 Content-Type: application/json
@@ -160,6 +172,7 @@ Content-Type: application/json
 ```
 
 ### School Scraping
+
 ```http
 POST /scrape/school
 Content-Type: application/json
@@ -174,11 +187,13 @@ Content-Type: application/json
 ### Using cURL
 
 1. **Health Check**
+
 ```bash
 curl http://localhost:8080/health
 ```
 
 2. **Profile Scraping**
+
 ```bash
 curl -X POST http://localhost:8080/scrape/profile \
   -H "Content-Type: application/json" \
@@ -186,6 +201,7 @@ curl -X POST http://localhost:8080/scrape/profile \
 ```
 
 3. **Company Scraping**
+
 ```bash
 curl -X POST http://localhost:8080/scrape/company \
   -H "Content-Type: application/json" \
